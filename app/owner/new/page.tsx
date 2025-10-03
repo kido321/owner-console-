@@ -1,32 +1,21 @@
-"use client";
-import { useState } from "react";
+import NewOrganizationForm from "@/components/NewOrganizationForm";
+import { requireOwner } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabaseServer";
 
-export default function NewOrg() {
-  const [loading, setLoading] = useState(false);
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(form.entries());
-    setLoading(true);
-    const res = await fetch("/api/orgs", { method: "POST", body: JSON.stringify(payload) });
-    setLoading(false);
-    if (res.ok) location.href = "/owner";
-    else alert("Error creating org");
+export const dynamic = "force-dynamic";
+
+export default async function NewOrganizationPage() {
+  await requireOwner();
+
+  const supabase = supabaseAdmin();
+  const { data: plansData, error } = await supabase
+    .from("plans")
+    .select("id, name")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
   }
-  return (
-    <form onSubmit={onSubmit} className="p-6 space-y-3 max-w-xl">
-      <h1 className="text-xl font-semibold">Create organization</h1>
-      <input name="id" placeholder="org id (text)" className="border p-2 w-full" required />
-      <input name="name" placeholder="Name" className="border p-2 w-full" required />
-      <input name="primary_email" type="email" placeholder="Email" className="border p-2 w-full" required />
-      <input name="primary_phone" placeholder="Phone" className="border p-2 w-full" required />
-      <input name="address_line1" placeholder="Address 1" className="border p-2 w-full" required />
-      <input name="city" placeholder="City" className="border p-2 w-full" required />
-      <input name="state" placeholder="State" className="border p-2 w-full" required />
-      <input name="zip_code" placeholder="ZIP" className="border p-2 w-full" required />
-      <button disabled={loading} className="px-4 py-2 rounded bg-black text-white">
-        {loading ? "Creating..." : "Create"}
-      </button>
-    </form>
-  );
+
+  return <NewOrganizationForm plans={plansData ?? []} />;
 }

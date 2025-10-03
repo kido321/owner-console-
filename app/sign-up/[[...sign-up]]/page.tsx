@@ -1,14 +1,14 @@
-// app/sign-in/[[...sign-in]]/page.tsx
 "use client";
-import { SignIn } from "@clerk/nextjs";
 
-export default function SignInPage() {
+import { SignUp } from "@clerk/nextjs";
+
+export default function SignUpPage() {
   return (
     <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center p-6">
-      <SignIn
-        path="/sign-in"
+      <SignUp
+        path="/sign-up"
         routing="path"
-        signUpUrl="/sign-up"
+        signInUrl="/sign-in"
         afterSignInUrl="/owner"
         afterSignUpUrl="/owner"
       />

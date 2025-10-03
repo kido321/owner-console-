@@ -11,8 +11,6 @@ export default function SignOutPage() {
       // hard fallback (very rare):
       // window.location.href = "/sign-in";
     })();
-
-    console.log("gaga")
   }, [signOut]);
   return <div className="p-6">Signing you out…</div>;
 }

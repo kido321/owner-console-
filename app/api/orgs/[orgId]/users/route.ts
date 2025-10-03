@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
+
+import { requireOwner } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { currentUser } from "@clerk/nextjs/server";
 
-export async function GET(_: Request, { params }: { params: { orgId: string } }) {
-  const user = await currentUser();
-  if (!user || user.publicMetadata?.platformRole !== "owner") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const sb = supabaseAdmin();
-  const { data, error } = await sb.from("users").select("*").eq("org_id", params.orgId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ orgId: string }> }
+) {
+  try {
+    const { orgId } = await context.params;
+    await requireOwner();
+    const supabase = supabaseAdmin();
+    const { data, error } = await supabase.from("users").select("*").eq("org_id", orgId);
+    if (error) throw error;
+    return NextResponse.json({ users: data ?? [] });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load users";
+    const status = error instanceof Error && error.name === "OwnerAccessError" ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }

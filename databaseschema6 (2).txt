@@ -1,0 +1,1319 @@
+--
+-- Name: account_billable_services; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.account_billable_services (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_id uuid NOT NULL,
+    service_code_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.account_billable_services OWNER TO postgres;
+
+--
+-- Name: account_service_rates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.account_service_rates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_id uuid NOT NULL,
+    service_code_id uuid NOT NULL,
+    custom_rate numeric(10,2) NOT NULL,
+    effective_date date NOT NULL,
+    end_date date,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.account_service_rates OWNER TO postgres;
+
+--
+-- Name: account_trip_settings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.account_trip_settings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_id uuid NOT NULL,
+    pickup_signature_required boolean DEFAULT false,
+    dropoff_signature_required boolean DEFAULT true,
+    signature_type text DEFAULT 'patient_or_guardian'::text,
+    proximity_validation_enabled boolean DEFAULT true,
+    pickup_radius_meters integer DEFAULT 50,
+    dropoff_radius_meters integer DEFAULT 50,
+    enforce_proximity boolean DEFAULT true,
+    require_odometer_reading boolean DEFAULT false,
+    require_vehicle_inspection boolean DEFAULT false,
+    require_patient_photo boolean DEFAULT false,
+    require_patient_id_verification boolean DEFAULT false,
+    allow_skip_signature boolean DEFAULT false,
+    allow_proximity_override boolean DEFAULT false,
+    require_override_reason boolean DEFAULT true,
+    send_pickup_notification boolean DEFAULT true,
+    send_dropoff_notification boolean DEFAULT true,
+    notification_channels text[] DEFAULT ARRAY['sms'::text],
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    created_by text,
+    CONSTRAINT valid_radius CHECK (((pickup_radius_meters >= 0) AND (pickup_radius_meters <= 1000) AND (dropoff_radius_meters >= 0) AND (dropoff_radius_meters <= 1000))),
+    CONSTRAINT valid_signature_type CHECK ((signature_type = ANY (ARRAY['patient_only'::text, 'guardian_only'::text, 'patient_or_guardian'::text, 'none'::text])))
+);
+
+
+ALTER TABLE public.account_trip_settings OWNER TO postgres;
+
+--
+-- Name: accounts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.accounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    name text NOT NULL,
+    class text NOT NULL,
+    contact_first_name text,
+    contact_last_name text,
+    phone text,
+    alternate_phone text,
+    fax text,
+    email text,
+    no_show_billable boolean DEFAULT false,
+    cancelled_trips_billable boolean DEFAULT false,
+    last_invoice_number bigint,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    address text,
+    deleted_at timestamp with time zone,
+    is_active boolean DEFAULT true
+);
+
+
+ALTER TABLE public.accounts OWNER TO postgres;
+
+--
+-- Name: claim_line_items; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.claim_line_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    claim_id uuid NOT NULL,
+    invoice_item_id uuid NOT NULL,
+    billed_amount numeric(10,2) NOT NULL,
+    service_code text NOT NULL,
+    modifiers text[],
+    adjudicated_status text DEFAULT 'pending'::text
+);
+
+
+ALTER TABLE public.claim_line_items OWNER TO postgres;
+
+--
+-- Name: claims; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.claims (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    submission_batch_id uuid,
+    payer_id text NOT NULL,
+    submission_format text DEFAULT '837P'::text,
+    total_billed_amount numeric(10,2) NOT NULL,
+    status text NOT NULL,
+    submitted_at timestamp with time zone,
+    clearinghouse_ref_id text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.claims OWNER TO postgres;
+
+--
+-- Name: client_accounts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.client_accounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    client_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    member_number text,
+    end_date date,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.client_accounts OWNER TO postgres;
+
+--
+-- Name: client_needs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.client_needs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    client_id uuid NOT NULL,
+    need_type text NOT NULL,
+    quantity integer DEFAULT 0 NOT NULL,
+    bring boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.client_needs OWNER TO postgres;
+
+--
+-- Name: clients; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.clients (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    first_name text NOT NULL,
+    middle_initial text,
+    last_name text NOT NULL,
+    class text,
+    date_of_birth date,
+    gender text,
+    weight_lbs numeric(5,2),
+    height_inches numeric(4,2),
+    ssn text,
+    phone text,
+    alternate_phone text,
+    mobile_phone text,
+    email text,
+    contact_name text,
+    contact_phone text,
+    address text NOT NULL,
+    diagnosis_code text,
+    primary_provider text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+ALTER TABLE public.clients OWNER TO postgres;
+
+--
+-- Name: driver_availability; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.driver_availability (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    driver_id uuid NOT NULL,
+    available_from timestamp without time zone NOT NULL,
+    available_to timestamp without time zone NOT NULL,
+    recurrence_rule text,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.driver_availability OWNER TO postgres;
+
+--
+-- Name: driver_locations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.driver_locations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    driver_id uuid NOT NULL,
+    latitude numeric(10,8) NOT NULL,
+    longitude numeric(11,8) NOT NULL,
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    org_id text NOT NULL
+);
+
+
+ALTER TABLE public.driver_locations OWNER TO postgres;
+
+--
+-- Name: driver_unavailability; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.driver_unavailability (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    driver_id uuid NOT NULL,
+    unavailable_from timestamp without time zone NOT NULL,
+    unavailable_to timestamp without time zone NOT NULL,
+    reason text
+);
+
+
+ALTER TABLE public.driver_unavailability OWNER TO postgres;
+
+--
+-- Name: driver_vehicle_assignments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.driver_vehicle_assignments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    driver_id uuid NOT NULL,
+    vehicle_id uuid NOT NULL,
+    start_datetime timestamp with time zone DEFAULT now() NOT NULL,
+    end_datetime timestamp with time zone,
+    assignment_type text NOT NULL,
+    status text NOT NULL,
+    assigned_by text,
+    reason text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    org_id text NOT NULL,
+    CONSTRAINT driver_vehicle_assignments_assignment_type_check CHECK ((assignment_type = ANY (ARRAY['permanent'::text, 'temporary'::text, 'backup'::text]))),
+    CONSTRAINT driver_vehicle_assignments_status_check CHECK ((status = ANY (ARRAY['active'::text, 'completed'::text, 'cancelled'::text]))),
+    CONSTRAINT valid_assignment_period CHECK (((end_datetime IS NULL) OR (end_datetime > start_datetime)))
+);
+
+
+ALTER TABLE public.driver_vehicle_assignments OWNER TO postgres;
+
+--
+-- Name: drivers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.drivers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    clerk_user_id text,
+    license_number text NOT NULL,
+    license_expiry date NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    status text,
+    latitude numeric(10,8) DEFAULT '0'::numeric,
+    longitude numeric(11,8) DEFAULT '0'::numeric,
+    deleted_at timestamp with time zone,
+    last_seen_at timestamp with time zone
+);
+
+
+ALTER TABLE public.drivers OWNER TO postgres;
+
+--
+-- Name: TABLE drivers; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.drivers IS 'Stores information about drivers providing NEMT services';
+
+
+--
+-- Name: invoice_adjustments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.invoice_adjustments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    invoice_id uuid NOT NULL,
+    adjustment_date date NOT NULL,
+    amount numeric(10,2) NOT NULL,
+    adjustment_type text NOT NULL,
+    reason text NOT NULL,
+    approved_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT invoice_adjustments_type_check CHECK ((adjustment_type = ANY (ARRAY['discount'::text, 'write_off'::text, 'credit'::text, 'refund'::text, 'correction'::text, 'other'::text])))
+);
+
+
+ALTER TABLE public.invoice_adjustments OWNER TO postgres;
+
+--
+-- Name: invoice_items; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.invoice_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    invoice_id uuid NOT NULL,
+    trip_id uuid,
+    trip_leg_id uuid,
+    service_code_id uuid NOT NULL,
+    description text NOT NULL,
+    quantity numeric NOT NULL,
+    unit_price numeric(10,2) NOT NULL,
+    total_price numeric(10,2) NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.invoice_items OWNER TO postgres;
+
+--
+-- Name: invoice_payments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.invoice_payments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    invoice_id uuid NOT NULL,
+    payment_date date NOT NULL,
+    amount numeric(10,2) NOT NULL,
+    payment_method text NOT NULL,
+    reference_number text,
+    notes text,
+    recorded_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT invoice_payments_payment_method_check CHECK ((payment_method = ANY (ARRAY['check'::text, 'credit_card'::text, 'ach'::text, 'cash'::text, 'wire_transfer'::text, 'insurance'::text, 'other'::text])))
+);
+
+
+ALTER TABLE public.invoice_payments OWNER TO postgres;
+
+--
+-- Name: invoice_status_history; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.invoice_status_history (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    invoice_id uuid NOT NULL,
+    old_status text,
+    new_status text NOT NULL,
+    changed_at timestamp with time zone DEFAULT now(),
+    changed_by text,
+    notes text
+);
+
+
+ALTER TABLE public.invoice_status_history OWNER TO postgres;
+
+--
+-- Name: invoices; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.invoices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    account_id uuid NOT NULL,
+    invoice_number text NOT NULL,
+    invoice_date date NOT NULL,
+    due_date date NOT NULL,
+    billing_period_start date NOT NULL,
+    billing_period_end date NOT NULL,
+    subtotal numeric(10,2) NOT NULL,
+    tax_amount numeric(10,2) DEFAULT 0.00,
+    discount_amount numeric(10,2) DEFAULT 0.00,
+    total_amount numeric(10,2) NOT NULL,
+    balance_due numeric(10,2) NOT NULL,
+    status text DEFAULT 'draft'::text NOT NULL,
+    notes text,
+    created_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone,
+    CONSTRAINT invoices_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'pending'::text, 'sent'::text, 'partial'::text, 'paid'::text, 'overdue'::text, 'void'::text, 'cancelled'::text])))
+);
+
+
+ALTER TABLE public.invoices OWNER TO postgres;
+
+--
+-- Name: jwt_test; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.jwt_test (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    user_id text,
+    org_id text,
+    test_value text
+);
+
+
+ALTER TABLE public.jwt_test OWNER TO postgres;
+
+--
+-- Name: latest_driver_location; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.latest_driver_location AS
+ SELECT DISTINCT ON (dl.driver_id) dl.id,
+    dl.driver_id,
+    dl.latitude,
+    dl.longitude,
+    dl.recorded_at,
+    dl.org_id
+   FROM public.driver_locations dl
+  ORDER BY dl.driver_id, dl.recorded_at DESC;
+
+
+ALTER VIEW public.latest_driver_location OWNER TO postgres;
+
+--
+-- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    severity public.notification_severity DEFAULT 'info'::public.notification_severity NOT NULL,
+    title text NOT NULL,
+    body text,
+    source public.notification_source DEFAULT 'system'::public.notification_source NOT NULL,
+    entity_id uuid,
+    action_url text,
+    is_important boolean DEFAULT false NOT NULL,
+    read_at timestamp with time zone,
+    archived_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    meta jsonb DEFAULT '{}'::jsonb NOT NULL,
+    dedupe_key text,
+    bucket_minute bigint
+);
+
+
+ALTER TABLE public.notifications OWNER TO postgres;
+
+--
+-- Name: organization_contacts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.organization_contacts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    contact_type text NOT NULL,
+    first_name text NOT NULL,
+    last_name text NOT NULL,
+    title text,
+    email text,
+    phone text,
+    is_primary boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.organization_contacts OWNER TO postgres;
+
+--
+-- Name: organization_documents; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.organization_documents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    document_type text NOT NULL,
+    document_name text NOT NULL,
+    file_path text NOT NULL,
+    file_type text NOT NULL,
+    issue_date date,
+    expiry_date date,
+    status text DEFAULT 'active'::text NOT NULL,
+    notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.organization_documents OWNER TO postgres;
+
+--
+-- Name: organization_service_areas; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.organization_service_areas (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    area_name text NOT NULL,
+    area_type text NOT NULL,
+    area_data jsonb NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.organization_service_areas OWNER TO postgres;
+
+--
+-- Name: organization_settings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.organization_settings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    setting_key text NOT NULL,
+    setting_value text NOT NULL,
+    setting_type text NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.organization_settings OWNER TO postgres;
+
+--
+-- Name: organizations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.organizations (
+    id text NOT NULL,
+    name text NOT NULL,
+    legal_name text,
+    tax_id text,
+    business_type text,
+    primary_phone text NOT NULL,
+    alternate_phone text,
+    fax_number text,
+    primary_email text NOT NULL,
+    website text,
+    address_line1 text NOT NULL,
+    address_line2 text,
+    city text NOT NULL,
+    state text NOT NULL,
+    zip_code text NOT NULL,
+    country text DEFAULT 'USA'::text NOT NULL,
+    timezone text DEFAULT 'UTC'::text NOT NULL,
+    business_hours jsonb,
+    operational_days jsonb,
+    date_format text DEFAULT 'MM/DD/YYYY'::text,
+    time_format text DEFAULT '12h'::text,
+    logo_url text,
+    primary_color text,
+    secondary_color text,
+    is_broker boolean DEFAULT false,
+    is_provider boolean DEFAULT true,
+    service_radius numeric(5,2),
+    default_service_area jsonb,
+    license_number text,
+    license_state text,
+    license_expiry date,
+    insurance_provider text,
+    insurance_policy_number text,
+    insurance_expiry date,
+    medicaid_provider_number text,
+    medicare_provider_number text,
+    default_billing_terms integer DEFAULT 30,
+    tax_rate numeric(5,2) DEFAULT 0.00,
+    currency text DEFAULT 'USD'::text,
+    billing_email text,
+    billing_contact_name text,
+    max_users integer DEFAULT 10,
+    subscription_plan text,
+    subscription_status text,
+    features_enabled jsonb,
+    notification_preferences jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    active boolean DEFAULT true
+);
+
+
+ALTER TABLE public.organizations OWNER TO postgres;
+
+--
+-- Name: patients; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.patients (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    first_name text NOT NULL,
+    last_name text NOT NULL,
+    date_of_birth date NOT NULL,
+    phone_number text,
+    email text,
+    address text,
+    emergency_contact text,
+    medical_conditions text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.patients OWNER TO postgres;
+
+--
+-- Name: TABLE patients; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.patients IS 'Stores patient information for NEMT services';
+
+
+--
+-- Name: prior_authorizations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.prior_authorizations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_id uuid NOT NULL,
+    client_id uuid NOT NULL,
+    auth_number text NOT NULL,
+    payer_name text,
+    issue_date date NOT NULL,
+    start_date date NOT NULL,
+    end_date date,
+    authorized_trips integer,
+    authorized_service_codes text[],
+    status text DEFAULT 'active'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.prior_authorizations OWNER TO postgres;
+
+--
+-- Name: recurring_trip_leg_billing_templates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.recurring_trip_leg_billing_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    recurring_trip_leg_id uuid NOT NULL,
+    quantity integer DEFAULT 1 NOT NULL,
+    override_rate numeric(10,2),
+    override_reason text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    service_code text NOT NULL
+);
+
+
+ALTER TABLE public.recurring_trip_leg_billing_templates OWNER TO postgres;
+
+--
+-- Name: recurring_trip_legs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.recurring_trip_legs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    recurring_trip_id uuid NOT NULL,
+    leg_number integer NOT NULL,
+    pickup_address text NOT NULL,
+    dropoff_address text NOT NULL,
+    pickup_time_of_day time without time zone NOT NULL,
+    dropoff_time_of_day time without time zone NOT NULL,
+    pickup_latitude numeric(10,8),
+    pickup_longitude numeric(11,8),
+    dropoff_latitude numeric(10,8),
+    dropoff_longitude numeric(11,8),
+    estimated_mileage numeric(10,2),
+    driver_notes text,
+    will_call boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.recurring_trip_legs OWNER TO postgres;
+
+--
+-- Name: recurring_trips; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.recurring_trips (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    account_id uuid NOT NULL,
+    patient_id uuid NOT NULL,
+    mode_of_transport text NOT NULL,
+    trip_purpose text NOT NULL,
+    external_id text,
+    priority integer DEFAULT 10,
+    client_class text,
+    wheelchair_needed boolean DEFAULT false,
+    ambulatory_needed boolean DEFAULT false,
+    seating_needed boolean DEFAULT false,
+    billing_notes text,
+    special_instructions text,
+    rrule text NOT NULL,
+    start_date date NOT NULL,
+    end_date date,
+    occurrence_count integer,
+    time_zone text NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    last_generated_until date,
+    created_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT recurring_trips_end_condition_check CHECK ((((end_date IS NOT NULL) AND (occurrence_count IS NULL)) OR ((end_date IS NULL) AND (occurrence_count IS NOT NULL)) OR ((end_date IS NULL) AND (occurrence_count IS NULL))))
+);
+
+
+ALTER TABLE public.recurring_trips OWNER TO postgres;
+
+--
+-- Name: remittance_line_item_adjustments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.remittance_line_item_adjustments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    remittance_id uuid NOT NULL,
+    claim_line_item_id uuid NOT NULL,
+    paid_amount numeric(10,2) NOT NULL,
+    adjustment_group_code text,
+    adjustment_reason_code text,
+    adjustment_amount numeric(10,2),
+    is_reconciled boolean DEFAULT false
+);
+
+
+ALTER TABLE public.remittance_line_item_adjustments OWNER TO postgres;
+
+--
+-- Name: remittances; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.remittances (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    payer_id text NOT NULL,
+    payment_method text,
+    check_or_eft_number text NOT NULL,
+    payment_date date NOT NULL,
+    total_paid_amount numeric(10,2) NOT NULL,
+    processed_at timestamp with time zone DEFAULT now(),
+    raw_data jsonb
+);
+
+
+ALTER TABLE public.remittances OWNER TO postgres;
+
+--
+-- Name: schedules; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.schedules (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    driver_id uuid,
+    start_time timestamp with time zone NOT NULL,
+    end_time timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    recurrence_rule text
+);
+
+
+ALTER TABLE public.schedules OWNER TO postgres;
+
+--
+-- Name: TABLE schedules; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.schedules IS 'Stores schedule information for drivers, including status and recurrence details';
+
+
+--
+-- Name: service_codes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.service_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    code text NOT NULL,
+    description text NOT NULL,
+    base_rate numeric(10,2) NOT NULL,
+    code_type text NOT NULL,
+    category text,
+    unit_of_measure text DEFAULT 'each'::text NOT NULL,
+    is_mileage_code boolean DEFAULT false NOT NULL,
+    requires_modifier boolean DEFAULT false NOT NULL,
+    active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.service_codes OWNER TO postgres;
+
+--
+-- Name: trip_additional_needs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_additional_needs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trip_id uuid NOT NULL,
+    need_type text NOT NULL,
+    quantity integer DEFAULT 1,
+    bring boolean DEFAULT false,
+    notes text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.trip_additional_needs OWNER TO postgres;
+
+--
+-- Name: trip_billing_details; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_billing_details (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trip_id uuid NOT NULL,
+    code_type text,
+    quantity numeric(10,2) DEFAULT NULL::numeric,
+    base_rate numeric(10,2) NOT NULL,
+    override_rate numeric(10,2),
+    total_amount numeric(10,2) NOT NULL,
+    override_reason text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    trip_leg_id uuid,
+    description text,
+    service_code_id uuid,
+    service_code text
+);
+
+
+ALTER TABLE public.trip_billing_details OWNER TO postgres;
+
+--
+-- Name: COLUMN trip_billing_details.description; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_billing_details.description IS 'Description of the billing item or service provided.';
+
+
+--
+-- Name: trip_import_sessions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_import_sessions (
+    import_id uuid NOT NULL,
+    org_id text NOT NULL,
+    account_id uuid NOT NULL,
+    file_name text,
+    file_size integer,
+    time_zone text NOT NULL,
+    import_format text NOT NULL,
+    total_rows integer DEFAULT 0,
+    valid_rows integer DEFAULT 0,
+    invalid_rows integer DEFAULT 0,
+    status text DEFAULT 'pending'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    validated_at timestamp with time zone,
+    processed_at timestamp with time zone,
+    expires_at timestamp with time zone NOT NULL,
+    created_by text
+);
+
+
+ALTER TABLE public.trip_import_sessions OWNER TO postgres;
+
+--
+-- Name: trip_import_staging; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_import_staging (
+    id integer NOT NULL,
+    import_id uuid NOT NULL,
+    org_id text NOT NULL,
+    account_id uuid NOT NULL,
+    row_number integer,
+    raw_data jsonb,
+    is_valid boolean DEFAULT false,
+    validation_errors text[],
+    processed boolean DEFAULT false,
+    geocoded boolean DEFAULT false,
+    invoice_number text,
+    trip_type text,
+    leg_identifier text,
+    patient_first_name text,
+    patient_last_name text,
+    patient_middle_initial text,
+    patient_dob date,
+    patient_phone text,
+    patient_identifier text,
+    pickup_datetime_utc timestamp with time zone,
+    dropoff_datetime_utc timestamp with time zone,
+    pickup_address_full text,
+    dropoff_address_full text,
+    pickup_address_structured jsonb,
+    dropoff_address_structured jsonb,
+    mode_of_transport text,
+    wheelchair_needed boolean,
+    estimated_mileage numeric(10,2),
+    special_instructions text,
+    service_code text,
+    service_rate numeric(10,2),
+    service_quantity integer,
+    service_code_modifier text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    trip_date_primary date,
+    service_code_id uuid,
+    service_code_modifiers text[],
+    is_mileage_code boolean DEFAULT false,
+    CONSTRAINT trip_import_staging_trip_type_check CHECK (((trip_type IS NULL) OR (trip_type = ANY (ARRAY['leg'::text, 'service'::text]))))
+);
+
+
+ALTER TABLE public.trip_import_staging OWNER TO postgres;
+
+--
+-- Name: TABLE trip_import_staging; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.trip_import_staging IS 'Staging table for validated trip import data from various CSV formats. Contains standardized fields used for final import.';
+
+
+--
+-- Name: COLUMN trip_import_staging.raw_data; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.raw_data IS 'The original, unmodified row data from the source CSV file, stored as JSONB.';
+
+
+--
+-- Name: COLUMN trip_import_staging.is_valid; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.is_valid IS 'True if the row passed format-specific validation during the first import phase.';
+
+
+--
+-- Name: COLUMN trip_import_staging.processed; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.processed IS 'True if the row has been successfully processed and imported into final tables (trips2, trip_legs, etc.).';
+
+
+--
+-- Name: COLUMN trip_import_staging.leg_identifier; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.leg_identifier IS 'Identifier linking related records (e.g., service lines to a specific leg) from the source file.';
+
+
+--
+-- Name: COLUMN trip_import_staging.pickup_datetime_utc; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.pickup_datetime_utc IS 'Standardized pickup date and time stored in UTC.';
+
+
+--
+-- Name: COLUMN trip_import_staging.dropoff_datetime_utc; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.dropoff_datetime_utc IS 'Standardized dropoff date and time stored in UTC. Can be NULL for scenarios like Will Call.';
+
+
+--
+-- Name: COLUMN trip_import_staging.trip_date_primary; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_import_staging.trip_date_primary IS 'The primary date (YYYY-MM-DD) associated with this leg/service record, parsed from the source file.';
+
+
+--
+-- Name: trip_import_staging_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.trip_import_staging_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.trip_import_staging_id_seq OWNER TO postgres;
+
+--
+-- Name: trip_import_staging_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.trip_import_staging_id_seq OWNED BY public.trip_import_staging.id;
+
+
+--
+-- Name: trip_leg_status_logs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_leg_status_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trip_leg_id uuid NOT NULL,
+    previous_status public.leg_status,
+    new_status public.leg_status NOT NULL,
+    latitude numeric(10,8),
+    longitude numeric(11,8),
+    "timestamp" timestamp with time zone DEFAULT now(),
+    notes text,
+    created_by uuid
+);
+
+
+ALTER TABLE public.trip_leg_status_logs OWNER TO postgres;
+
+--
+-- Name: trip_legs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_legs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trip_id uuid NOT NULL,
+    leg_number integer NOT NULL,
+    driver_id uuid,
+    vehicle_id uuid,
+    pickup_address text NOT NULL,
+    dropoff_address text NOT NULL,
+    pickup_time timestamp with time zone,
+    dropoff_time timestamp with time zone,
+    pickup_latitude numeric(10,8),
+    pickup_longitude numeric(11,8),
+    dropoff_latitude numeric(10,8),
+    dropoff_longitude numeric(11,8),
+    estimated_mileage numeric(10,2),
+    actual_mileage numeric(10,2),
+    vehicle_checked boolean DEFAULT false,
+    patient_contacted boolean DEFAULT false,
+    driver_notes text,
+    actual_pickup_time timestamp with time zone,
+    actual_dropoff_time timestamp with time zone,
+    pickup_signature text,
+    dropoff_signature text,
+    pickup_odometer numeric(10,2),
+    dropoff_odometer numeric(10,2),
+    status_timestamps jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    status public.leg_status DEFAULT 'scheduled'::public.leg_status NOT NULL,
+    org_id text NOT NULL,
+    will_call boolean DEFAULT false,
+    signature_timestamp timestamp with time zone,
+    actual_pickup_latitude numeric(10,8),
+    actual_pickup_longitude numeric(11,8),
+    actual_dropoff_latitude numeric(10,8),
+    actual_dropoff_longitude numeric(11,8),
+    deleted_at timestamp with time zone,
+    trip_date date NOT NULL,
+    recurring_trip_leg_id uuid,
+    pickup_signature_timestamp timestamp with time zone,
+    pickup_signature_type text,
+    dropoff_signature_type text,
+    proximity_validation_data jsonb DEFAULT '{}'::jsonb,
+    validation_overrides jsonb DEFAULT '{}'::jsonb,
+    override_reason text,
+    CONSTRAINT valid_dropoff_signature_type CHECK (((dropoff_signature_type IS NULL) OR (dropoff_signature_type = ANY (ARRAY['patient'::text, 'guardian'::text, 'authorized_representative'::text, 'driver_override'::text])))),
+    CONSTRAINT valid_pickup_signature_type CHECK (((pickup_signature_type IS NULL) OR (pickup_signature_type = ANY (ARRAY['patient'::text, 'guardian'::text, 'authorized_representative'::text, 'driver_override'::text]))))
+);
+
+
+ALTER TABLE public.trip_legs OWNER TO postgres;
+
+--
+-- Name: COLUMN trip_legs.pickup_time; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.pickup_time IS 'Scheduled pickup time in UTC. Can be NULL for Will Call pickups or if time is unconfirmed/unknown.';
+
+
+--
+-- Name: COLUMN trip_legs.dropoff_time; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.dropoff_time IS 'Scheduled dropoff time in UTC. Can be NULL for Will Call dropoffs or if time is unconfirmed/unknown.';
+
+
+--
+-- Name: COLUMN trip_legs.actual_pickup_latitude; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.actual_pickup_latitude IS 'The actual latitude where driver picked up the patient';
+
+
+--
+-- Name: COLUMN trip_legs.actual_pickup_longitude; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.actual_pickup_longitude IS 'The actual longitude where driver picked up the patient';
+
+
+--
+-- Name: COLUMN trip_legs.actual_dropoff_latitude; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.actual_dropoff_latitude IS 'The actual latitude where driver dropped off the patient';
+
+
+--
+-- Name: COLUMN trip_legs.actual_dropoff_longitude; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.actual_dropoff_longitude IS 'The actual longitude where driver dropped off the patient';
+
+
+--
+-- Name: COLUMN trip_legs.trip_date; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trip_legs.trip_date IS 'The specific date on which this leg is scheduled to occur.';
+
+
+--
+-- Name: trip_notes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_notes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trip_id uuid NOT NULL,
+    note_type text NOT NULL,
+    note_text text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.trip_notes OWNER TO postgres;
+
+--
+-- Name: trip_status_log; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trip_status_log (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trip_id uuid NOT NULL,
+    old_status public.schedule_status,
+    new_status public.schedule_status,
+    changed_at timestamp with time zone DEFAULT now(),
+    changed_by uuid
+);
+
+
+ALTER TABLE public.trip_status_log OWNER TO postgres;
+
+--
+-- Name: trips; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trips (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    patient_id uuid NOT NULL,
+    driver_id uuid,
+    vehicle_id uuid,
+    pickup_address text NOT NULL,
+    dropoff_address text NOT NULL,
+    pickup_time timestamp with time zone NOT NULL,
+    dropoff_time timestamp with time zone,
+    status public.schedule_status DEFAULT 'scheduled'::public.schedule_status NOT NULL,
+    notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    vehicle_checked boolean DEFAULT false,
+    patient_contacted boolean DEFAULT false,
+    driver_notes text,
+    special_instructions text,
+    patient_name text,
+    pickup_latitude numeric(10,8),
+    pickup_longitude numeric(11,8),
+    dropoff_latitude numeric(10,8),
+    dropoff_longitude numeric(11,8),
+    invoice_number bigint,
+    mileage integer,
+    wheelchair boolean,
+    status_change_history jsonb DEFAULT '[]'::jsonb
+);
+
+
+ALTER TABLE public.trips OWNER TO postgres;
+
+--
+-- Name: TABLE trips; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.trips IS 'Stores information about scheduled and completed trips, including driver workflow steps';
+
+
+--
+-- Name: trips2; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.trips2 (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    patient_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    external_id text,
+    status public.trip_status2 DEFAULT 'scheduled'::public.trip_status2 NOT NULL,
+    priority integer DEFAULT 10,
+    client_class text,
+    route text,
+    mode_of_transport text NOT NULL,
+    trip_purpose text NOT NULL,
+    wheelchair_needed boolean DEFAULT false,
+    ambulatory_needed boolean DEFAULT false,
+    seating_needed boolean DEFAULT false,
+    total_mileage numeric(10,2),
+    repeat_schedule jsonb,
+    billing_notes text,
+    special_instructions text,
+    created_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    status_change_history jsonb DEFAULT '[]'::jsonb,
+    optimization_settings jsonb,
+    time_zone text,
+    deleted_at timestamp with time zone,
+    trip_date date,
+    recurring_trip_id uuid
+);
+
+
+ALTER TABLE public.trips2 OWNER TO postgres;
+
+--
+-- Name: COLUMN trips2.trip_date; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.trips2.trip_date IS 'trip_date';
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users (
+    clerk_user_id text NOT NULL,
+    org_id text NOT NULL,
+    email text NOT NULL,
+    first_name text,
+    last_name text,
+    phone_number text,
+    role text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- Name: TABLE users; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.users IS 'Stores user information, extended from Clerk authentication';
+
+
+--
+-- Name: vehicles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.vehicles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    org_id text NOT NULL,
+    make text NOT NULL,
+    model text NOT NULL,
+    year integer NOT NULL,
+    license_plate text NOT NULL,
+    capacity integer NOT NULL,
+    wheelchair_accessible boolean NOT NULL,
+    status public.vehicle_status NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+ALTER TABLE public.vehicles OWNER TO postgres;
+
+--
+-- Name: TABLE vehicles; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.vehicles IS 'Stores information about vehicles used for NEMT services';
+
+
+--
+-- Name: messages; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+--

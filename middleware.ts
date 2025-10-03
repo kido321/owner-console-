@@ -1,23 +1,28 @@
 // middleware.ts (at project root)
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublic = createRouteMatcher([
+const isPublicRoute = createRouteMatcher([
   "/",
   "/public(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sign-out",
+  "/api/webhooks/clerk(.*)",
 ]);
 
-const isOwnerArea = createRouteMatcher([
+const requiresOwner = createRouteMatcher([
   "/owner(.*)",
   "/api/owner(.*)",
+  "/api/orgs(.*)",
+  "/api/plans(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublic(req)) return;            // don't block auth pages
-  if (isOwnerArea(req)) await auth.protect();
-  // everything else stays public for now
+  if (isPublicRoute(req)) return;
+
+  if (requiresOwner(req)) {
+    await auth.protect();
+  }
 });
 
 export const config = {
